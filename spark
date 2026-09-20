@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+export LOCAL_UID="$(id -u)" LOCAL_GID="$(id -g)"
+command -v docker >/dev/null || { printf 'Docker is required. See docs/setup.md.\n' >&2; exit 1; }
+docker compose version >/dev/null
+command="${1:-help}"
+if (($#)); then shift; fi
+case "$command" in
+  build) docker compose build "$@" ;;
+  doctor) docker compose run --rm --no-deps lab python manage.py doctor "$@" ;;
+  download) docker compose run --rm --no-deps lab python manage.py download "$@" ;;
+  start)
+    docker compose run --rm --no-deps lab python manage.py doctor --require-model
+    docker compose up -d "$@"
+    printf 'Loading the model. Check ./spark logs; browser port defaults to 7862.\n'
+    ;;
+  stop) docker compose stop "$@" ;;
+  logs) docker compose logs -f --tail 60 "$@" ;;
+  status) docker compose ps "$@" ;;
+  test) docker compose run --rm --no-deps lab python -B -m unittest discover -s tests -v "$@" ;;
+  *) printf 'Usage: ./spark {build|doctor|download --accept-model-license|start|stop|logs|status|test}\n'
+     [[ "$command" == help ]] || exit 2 ;;
+esac

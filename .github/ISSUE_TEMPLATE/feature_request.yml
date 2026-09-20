@@ -1,0 +1,15 @@
+name: Feature request
+description: Suggest an improvement to the DGX Spark workflow.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What workflow needs improvement?
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested behavior
+      description: Explain the user outcome and any alternatives considered.

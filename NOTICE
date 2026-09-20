@@ -1,0 +1,25 @@
+Spark Image Lab
+Copyright (c) 2026 Joey Rodriguez
+
+The MIT license applies to this repository's original application code and
+documentation, not to separately downloaded models or third-party software.
+
+Qwen is licensed under the Qwen RESEARCH LICENSE AGREEMENT, Copyright (c) 2026
+Hangzhou Tongyi Laboratory Technology Co., Ltd. All Rights Reserved.
+
+Model: https://huggingface.co/Qwen/Qwen-Image-2.1
+Pinned model license:
+https://huggingface.co/Qwen/Qwen-Image-2.1/blob/b3179ad355be050328e483a9dfdd9e60cd62adfa/LICENSE
+The pinned model permits research/evaluation use only without a separate
+commercial license. Model weights are downloaded separately, not redistributed
+in this Git repository. Keep the model's LICENSE with any model redistribution.
+Commercial licensing contact provided by Qwen: model-business@notice.qwencloud.com
+
+Built using Gradio, Hugging Face Diffusers and Transformers, PyTorch, Pillow,
+and the NVIDIA PyTorch container. Their respective license and notice files
+remain applicable. Inspect the installed distributions and NVIDIA container
+terms before redistributing a built container. No container images are
+published by this repository's automation.
+
+NVIDIA, DGX Spark, Qwen, ASUS, and related names belong to their respective
+owners. Naming the target hardware or model does not imply endorsement.

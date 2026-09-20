@@ -1,0 +1,24 @@
+name: Bug report
+description: Report a reproducible Spark Image Lab problem.
+labels: [bug]
+body:
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Hardware model, app tag/commit, driver, container version.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction and expected result
+      description: Include dimensions, steps, and reference count. Use a non-sensitive prompt.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Remove tokens, personal paths, private prompts, and images.
+      render: text

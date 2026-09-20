@@ -1,0 +1,16 @@
+cache/
+model/
+outputs/
+__pycache__/
+*.log
+backups/
+private-build/
+.env
+.env.*
+!.env.example
+*.tmp
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.DS_Store

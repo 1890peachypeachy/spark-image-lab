@@ -1,0 +1,32 @@
+[
+  {
+    "name": "01-pocket-universe",
+    "prompt": "A spectacular photorealistic macro photograph of a miniature futuristic city built inside a clear glass cube on a real black desk. The cube is open at the front. A tiny elevated silver train loops around tall white buildings; a waterfall pours from a floating island into a small turquoise lake; one orange hot-air balloon floats over the buildings. A human hand rests beside the cube to establish its small scale. Precise architectural details, physically believable glass refraction, natural afternoon window light, sharp miniature textures, cinematic composition. A small engraved metal plaque on the front of the base reads exactly 'LOCAL WORLD'. No other text. Square composition, all of the cube visible, editorial photography, astonishing yet tangible.",
+    "width": 1024,
+    "height": 1024,
+    "seed": 42
+  },
+  {
+    "name": "02-world-after-dark",
+    "reference": "01-pocket-universe",
+    "prompt": "Edit this same photograph into a dramatic nighttime version. Preserve the exact glass cube, miniature city architecture, train route, waterfall, floating island, balloon, hand, camera angle and desk composition. Change the daylight to night: illuminate the building windows with warm golden light, add tiny cyan lights along the train, and put a vivid aurora in the miniature sky inside the cube. The desk outside the cube remains a realistic dimly lit room. Preserve the plaque text 'LOCAL WORLD'. Reflections in the glass should respond naturally to the new lighting. This is a coherent lighting and atmosphere transformation of the original scene.",
+    "width": 1024,
+    "height": 1024,
+    "seed": 43
+  },
+  {
+    "name": "03-transparent-world",
+    "reference": "01-pocket-universe",
+    "prompt": "This is an RGBA image with transparency. Extract the entire glass cube and its miniature city from the reference photograph as an isolated product cutout. Preserve the cube, buildings, train, waterfall, floating island, balloon and base with the text 'LOCAL WORLD'. Remove the real room, desk and human hand. Keep the fine glass edges and believable partially transparent glass areas. The image has alpha channel and the background is transparent.",
+    "width": 1024,
+    "height": 1024,
+    "seed": 44
+  },
+  {
+    "name": "04-liquid-chrome",
+    "prompt": "This is an RGBA image with transparency. An intricate sculptural capital letter J made of liquid polished chrome with a vivid red ribbon orbiting through its opening and three clear glass droplets suspended around it. High-end product photography, crisp mirrored highlights, physically realistic reflections, intricate curved forms, the entire sculpture centered with generous empty margin. No floor, no pedestal, no lettering besides the J. The image has alpha channel and the background is transparent.",
+    "width": 1024,
+    "height": 1024,
+    "seed": 45
+  }
+]
