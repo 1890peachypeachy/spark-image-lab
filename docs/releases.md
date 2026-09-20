@@ -6,9 +6,10 @@ publishes containers, model weights, or releases.
 ## Versioning
 
 Use semantic versions in `VERSION` and matching annotated Git tags prefixed with
-`v`. The initial private milestone is `v0.1.0-alpha.1`. Additional private testing
-milestones increment `alpha.2`, `alpha.3`, and so on. Tag only a reviewed commit
-with passing checks, and do not move or overwrite an existing tag.
+`v`. The initial private milestone is `v0.1.0-alpha.1`. Subsequent alpha
+milestones increment `alpha.2`, `alpha.3`, and so on. The first public security
+milestone is `v0.1.0-alpha.2`. Tag only a reviewed commit with passing checks,
+and do not move or overwrite an existing tag.
 
 Before tagging, update `CHANGELOG.md`, run CPU/container tests, perform the GPU
 smoke test, and record the tested hardware and software revisions. GitHub topics

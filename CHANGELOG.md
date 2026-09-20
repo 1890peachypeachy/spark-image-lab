@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-alpha.2 - 2026-09-20
 
 - Prepare the project for its public alpha release with private vulnerability
   reporting guidance and patched versions of vulnerable packages inherited from
