@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Prepare the project for its public alpha release with private vulnerability
+  reporting guidance and patched versions of vulnerable packages inherited from
+  the NVIDIA base image.
+
 ## 0.1.0-alpha.1 - 2026-09-20
 
 Initial private DGX Spark-focused repository, validated first on ASUS GX10/GB10.

@@ -16,9 +16,8 @@ downloads a pinned model revision. Gradio and Hugging Face telemetry are disable
 Build/download steps still contact NVIDIA, package registries, GitHub, and Hugging
 Face. Updating dependencies and reviewing their advisories is a release duty.
 
-During the private alpha, report vulnerabilities directly to the repository
-owner through your existing collaborator channel, not a public issue. Before
-making the repo public, enable GitHub private vulnerability reporting and verify
-the reporting link. Do not attach secrets or real reference images to reports.
+Report vulnerabilities privately through the repository's **Security** tab by
+selecting **Report a vulnerability**. Do not open a public issue for a suspected
+vulnerability, and do not attach secrets or real reference images to reports.
 
 No production-security support guarantee is offered for alpha versions.

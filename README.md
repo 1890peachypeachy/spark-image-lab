@@ -6,9 +6,9 @@ Local image generation and editing for **NVIDIA DGX Spark**, powered by
 Qwen-Image-2.1 and Gradio. Keep prompts, reference images, and results on your
 machine. No cloud inference service is required.
 
-**Private alpha: 0.1.0-alpha.1.** Validated on an ASUS GX10 with NVIDIA GB10
+**Public alpha: 0.1.0-alpha.1.** Validated on an ASUS GX10 with NVIDIA GB10
 and 128 GB unified memory. DGX Spark is the target platform; a separate run on
-an NVIDIA-branded DGX Spark is still a public-release gate. Gaming GPUs,
+an NVIDIA-branded DGX Spark has not yet been completed. Gaming GPUs,
 Windows, macOS inference, and multi-user hosting are not supported targets.
 
 ## What It Does
@@ -57,8 +57,7 @@ another computer, forward the loopback-only port through SSH:
 ssh -N -L 7862:127.0.0.1:7862 YOUR_SPARK_SSH_ALIAS
 ```
 
-Then open the same URL on that computer. During the private alpha, cloning
-requires collaborator access to this repository.
+Then open the same URL on that computer.
 
 ## Performance
 
