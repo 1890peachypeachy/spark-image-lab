@@ -1,3 +1,5 @@
+![Spark Image Lab: local image generation and editing for NVIDIA DGX Spark, powered by Qwen-Image-2.1](docs/assets/spark-image-lab-banner.png)
+
 # Spark Image Lab
 
 Local image generation and editing for **NVIDIA DGX Spark**, powered by
