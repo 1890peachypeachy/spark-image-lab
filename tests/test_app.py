@@ -7,10 +7,10 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-RUNTIME_AVAILABLE = all(importlib.util.find_spec(name) for name in ("torch", "gradio", "diffusers"))
+RUNTIME_AVAILABLE = all(importlib.util.find_spec(name) for name in ("gradio", "PIL"))
 
 
-@unittest.skipUnless(RUNTIME_AVAILABLE, "Run ./spark test for Gradio integration tests")
+@unittest.skipUnless(RUNTIME_AVAILABLE, "Install requirements-ci.txt for Gradio integration tests")
 class AppTests(unittest.TestCase):
     def setUp(self):
         import lab

@@ -6,12 +6,18 @@ import os
 import threading
 import time
 
-import torch
 from PIL import Image, ImageOps
-from diffusers import QwenImage21Pipeline
+
+try:
+    from torch import OutOfMemoryError as TorchOutOfMemoryError
+except ImportError:
+    class TorchOutOfMemoryError(RuntimeError):
+        """Fallback used by CPU-only callback tests."""
 
 from history import load_history, restore_generation, save_generation, validate_request
-from settings import APP_VERSION, MODEL_DIR, MODEL_ID, MODEL_REVISION, OUTPUTS, ROOT
+from manage import model_install_error
+from settings import (APP_VERSION, MODEL_DIR, MODEL_ID, MODEL_REVISION, OUTPUTS,
+                      ROOT, prepare_output_directory)
 
 DEMOS = json.loads((ROOT / "demos.json").read_text())
 LOCK = threading.Lock()
@@ -21,8 +27,12 @@ PIPE = None
 def pipeline():
     global PIPE
     if PIPE is None:
-        if not (MODEL_DIR / "model_index.json").is_file():
-            raise RuntimeError("Model not found. Run the documented model download command first.")
+        import torch
+        from diffusers import QwenImage21Pipeline
+
+        model_error = model_install_error(MODEL_DIR)
+        if model_error:
+            raise RuntimeError(model_error)
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA is unavailable. Start the container with GPU access; see docs/troubleshooting.md.")
         started = time.perf_counter()
@@ -36,6 +46,9 @@ def pipeline():
 
 
 def generate(prompt, references=None, width=1024, height=1024, steps=40, seed=42):
+    import torch
+
+    prepare_output_directory()
     prompt, width, height, steps, seed = validate_request(prompt, width, height, steps, seed)
     references = references or []
     if len(references) > 10:
@@ -110,7 +123,7 @@ def build_app():
             image, metadata, stats = generate(prompt, refs, width, height, steps, seed)
         except ValueError as error:
             raise gr.Error(str(error)) from error
-        except torch.OutOfMemoryError as error:
+        except TorchOutOfMemoryError as error:
             raise gr.Error("GPU memory exhausted. Reduce the image dimensions or reference count.") from error
         except (OSError, Image.DecompressionBombError) as error:
             logging.exception("Image input or output failed")
@@ -175,6 +188,7 @@ def build_app():
 
 
 def serve():
+    prepare_output_directory()
     pipeline()
     build_app().launch(server_name=os.environ.get("SPARK_HOST", "127.0.0.1"),
                        server_port=int(os.environ.get("SPARK_PORT", "7860")), share=False,

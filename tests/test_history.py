@@ -87,6 +87,14 @@ class HistoryTests(unittest.TestCase):
             save_generation(self.root, BrokenImage(), self.metadata, [])
         self.assertEqual(load_history(self.root), [])
 
+    def test_failed_metadata_save_removes_new_reference_copy(self):
+        reference = Path(self.temp.name) / "ref.png"
+        reference.write_bytes(b"private")
+        metadata = dict(self.metadata, elapsed_seconds=float("nan"))
+        with self.assertRaises(ValueError):
+            save_generation(self.root, FakeImage(), metadata, [reference])
+        self.assertEqual(list((self.root / "references").iterdir()), [])
+
     def test_missing_saved_reference_is_reported(self):
         reference = Path(self.temp.name) / "ref.png"
         reference.write_bytes(b"ref")
@@ -104,6 +112,17 @@ class HistoryTests(unittest.TestCase):
         restored = restore_generation(self.root, saved["id"])
         self.assertEqual(restored["reference_paths"], [])
         self.assertEqual(restored["missing_references"], 1)
+
+    def test_reference_storage_symlink_cannot_escape_output_directory(self):
+        self.root.mkdir()
+        outside = Path(self.temp.name) / "outside"
+        outside.mkdir()
+        (self.root / "references").symlink_to(outside, target_is_directory=True)
+        reference = Path(self.temp.name) / "ref.png"
+        reference.write_bytes(b"private")
+        with self.assertRaises(ValueError):
+            self.save([reference])
+        self.assertEqual(list(outside.iterdir()), [])
 
     def test_repeated_reference_is_deduplicated(self):
         reference = Path(self.temp.name) / "ref.png"

@@ -5,10 +5,13 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import sys
 
-from settings import MODEL_DIR, MODEL_ID, MODEL_REVISION, OUTPUTS
+from settings import MODEL_DIR, MODEL_ID, MODEL_REVISION, OUTPUTS, prepare_output_directory
+
+REVISION_PATTERN = re.compile(r"[0-9a-f]{40}\Z")
 
 
 def missing_model_files(directory):
@@ -18,13 +21,17 @@ def missing_model_files(directory):
                 "text_encoder/config.json", "text_encoder/model.safetensors.index.json",
                 "transformer/config.json", "transformer/diffusion_pytorch_model.safetensors.index.json",
                 "vae/config.json", "vae/diffusion_pytorch_model.safetensors"]
-    missing = [name for name in required if not (directory / name).is_file()]
+    missing = [name for name in required
+               if not (directory / name).is_file() or (directory / name).stat().st_size == 0]
     for name in required:
         if not name.endswith(".index.json") or name in missing:
             continue
         try:
             index = json.loads((directory / name).read_text())
-            shards = set(index["weight_map"].values())
+            weight_map = index["weight_map"]
+            if not isinstance(weight_map, dict) or not weight_map:
+                raise ValueError("invalid weight map")
+            shards = set(weight_map.values())
             for shard in shards:
                 relative = Path(name).parent / shard
                 path = (directory / relative).resolve()
@@ -33,6 +40,36 @@ def missing_model_files(directory):
         except (KeyError, TypeError, ValueError, OSError):
             missing.append(f"{name} (invalid)")
     return missing
+
+
+def installed_model_revision(directory):
+    directory = Path(directory)
+    marker = directory / ".spark-model.json"
+    if marker.is_file():
+        try:
+            identity = json.loads(marker.read_text())
+            if identity.get("model") == MODEL_ID and REVISION_PATTERN.fullmatch(identity.get("revision", "")):
+                return identity["revision"]
+        except (AttributeError, json.JSONDecodeError, OSError):
+            return None
+        return None
+    metadata = directory / ".cache/huggingface/download/model_index.json.metadata"
+    try:
+        revision = metadata.read_text().splitlines()[0].strip()
+    except (IndexError, OSError):
+        return None
+    return revision if REVISION_PATTERN.fullmatch(revision) else None
+
+
+def model_install_error(directory):
+    missing = missing_model_files(directory)
+    if missing:
+        return f"Incomplete model. Missing or invalid: {', '.join(missing)}"
+    revision = installed_model_revision(directory)
+    if revision != MODEL_REVISION:
+        found = revision or "unverified"
+        return f"Model revision mismatch: expected {MODEL_REVISION}, found {found}. Re-run the download command."
+    return None
 
 
 def doctor(require_model=False):
@@ -49,14 +86,17 @@ def doctor(require_model=False):
         print(f"GPU: {gpu.name}; memory: {gpu.total_memory / 2**30:.1f} GiB")
         if "GB10" not in gpu.name:
             failures.append("This release is validated for GB10, not this GPU.")
-    OUTPUTS.mkdir(parents=True, exist_ok=True)
-    if not os.access(OUTPUTS, os.W_OK):
-        failures.append("Output directory is not writable; check LOCAL_UID and LOCAL_GID.")
-    print(f"Output disk free: {shutil.disk_usage(OUTPUTS).free / 2**30:.1f} GiB")
-    missing = missing_model_files(MODEL_DIR)
-    print("Model: " + ("download required" if missing else "required files present"))
-    if require_model and missing:
-        failures.append("Incomplete model. Run ./spark download --accept-model-license.")
+    try:
+        prepare_output_directory()
+        if not os.access(OUTPUTS, os.W_OK):
+            failures.append("Output directory is not writable; check LOCAL_UID and LOCAL_GID.")
+        print(f"Output disk free: {shutil.disk_usage(OUTPUTS).free / 2**30:.1f} GiB")
+    except (OSError, RuntimeError) as error:
+        failures.append(str(error))
+    model_error = model_install_error(MODEL_DIR)
+    print("Model: " + (model_error or "required files and revision verified"))
+    if require_model and model_error:
+        failures.append(model_error + " Run ./spark download --accept-model-license.")
     for failure in failures:
         print(f"ERROR: {failure}", file=sys.stderr)
     return 1 if failures else 0

@@ -49,27 +49,33 @@ def save_generation(root, image, metadata, references):
     record_path = root / f"{identifier}.json"
     temporary = root / f".{identifier}.tmp"
     reference_records = []
-    for reference in references:
-        source = Path(reference)
-        data = source.read_bytes()
-        digest = hashlib.sha256(data).hexdigest()
-        suffix = source.suffix.lower()
-        if suffix not in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff", ".gif"):
-            suffix = ".img"
-        relative = f"references/{digest}{suffix}"
-        destination = root / relative
-        destination.parent.mkdir(exist_ok=True)
-        if not destination.exists():
-            reference_temp = destination.with_name(f".{digest}-{uuid.uuid4().hex}.tmp")
-            try:
-                reference_temp.write_bytes(data)
-                reference_temp.replace(destination)
-            finally:
-                reference_temp.unlink(missing_ok=True)
-        reference_records.append({"filename": source.name, "sha256": digest, "path": relative})
-    record = dict(metadata, schema_version=1, id=identifier, created_at=now.isoformat(),
-                  references=reference_records)
+    created_references = []
     try:
+        for reference in references:
+            source = Path(reference)
+            data = source.read_bytes()
+            digest = hashlib.sha256(data).hexdigest()
+            suffix = source.suffix.lower()
+            if suffix not in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff", ".gif"):
+                suffix = ".img"
+            relative = f"references/{digest}{suffix}"
+            references_root = root / "references"
+            references_root.mkdir(exist_ok=True)
+            references_root = references_root.resolve()
+            if not references_root.is_relative_to(root):
+                raise ValueError("Reference storage must remain inside the output directory.")
+            destination = references_root / f"{digest}{suffix}"
+            if not destination.exists():
+                reference_temp = destination.with_name(f".{digest}-{uuid.uuid4().hex}.tmp")
+                try:
+                    reference_temp.write_bytes(data)
+                    reference_temp.replace(destination)
+                    created_references.append(destination)
+                finally:
+                    reference_temp.unlink(missing_ok=True)
+            reference_records.append({"filename": source.name, "sha256": digest, "path": relative})
+        record = dict(metadata, schema_version=1, id=identifier, created_at=now.isoformat(),
+                      references=reference_records)
         image.save(image_path, format="PNG")
         temporary.write_text(json.dumps(record, indent=2, allow_nan=False) + "\n")
         # The JSON rename is the commit point; readers never see a partial generation.
@@ -77,6 +83,8 @@ def save_generation(root, image, metadata, references):
     except Exception:
         image_path.unlink(missing_ok=True)
         temporary.unlink(missing_ok=True)
+        for path in created_references:
+            path.unlink(missing_ok=True)
         raise
     return str(image_path), str(record_path), record
 

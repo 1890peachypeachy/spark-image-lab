@@ -5,6 +5,9 @@
 - Prepare the project for its public alpha release with private vulnerability
   reporting guidance and patched versions of vulnerable packages inherited from
   the NVIDIA base image.
+- Run the real Gradio callback integration tests in CPU-only CI.
+- Verify the installed model revision before inference and contain saved reference
+  files even when the reference directory has been replaced by a symlink.
 
 ## 0.1.0-alpha.1 - 2026-09-20
 

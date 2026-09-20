@@ -1,0 +1,5 @@
+# Patched versions of packages inherited from the NVIDIA base image.
+jupyter-server==2.21.0
+onnx==1.22.0
+pygments==2.20.0
+setuptools==83.0.0
