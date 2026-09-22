@@ -21,6 +21,10 @@ def missing_model_files(directory):
                 "text_encoder/config.json", "text_encoder/model.safetensors.index.json",
                 "transformer/config.json", "transformer/diffusion_pytorch_model.safetensors.index.json",
                 "vae/config.json", "vae/diffusion_pytorch_model.safetensors"]
+    # Heretic NVFP4 variant: single-file text encoder (model.safetensors, no shard index).
+    if ((directory / "text_encoder" / "model.safetensors").is_file()
+            and not any(directory.joinpath("text_encoder").glob("model-0000*.safetensors"))):
+        required = [n for n in required if n != "text_encoder/model.safetensors.index.json"]
     missing = [name for name in required
                if not (directory / name).is_file() or (directory / name).stat().st_size == 0]
     for name in required:
