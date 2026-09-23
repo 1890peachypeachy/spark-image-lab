@@ -165,6 +165,8 @@ def size_for_ratio(ratio, fallback):
 
 
 def _load(directory):
+    import os
+
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -176,12 +178,27 @@ def _load(directory):
         raise RewriteError(model_error)
     if not torch.cuda.is_available():
         raise RewriteError("CUDA is unavailable. Start the container with GPU access; see docs/troubleshooting.md.")
+    # Optional int8/int4 weight-only quant (torchao), e.g. REWRITER_QUANT=int8.
+    # Decode is bytes-per-token bound on GB10 UMA; halving weight bytes roughly
+    # halves rewrite latency. Default stays BF16 pending a quality A/B.
+    quant = os.environ.get("REWRITER_QUANT", "").strip().lower()
+    quant_config = None
+    if quant in ("int8", "int4"):
+        from torchao.quantization import Int8WeightOnlyConfig, Int4WeightOnlyConfig
+
+        quant_config = (Int8WeightOnlyConfig() if quant == "int8"
+                        else Int4WeightOnlyConfig())
     started = time.perf_counter()
-    print("Loading PE-T2I prompt rewriter in BF16 on CUDA", flush=True)
+    label = f"{quant.upper()}-weight-only" if quant_config else "BF16"
+    print(f"Loading PE-T2I prompt rewriter in {label} on CUDA", flush=True)
     tokenizer = AutoTokenizer.from_pretrained(str(directory), local_files_only=True)
     model = AutoModelForCausalLM.from_pretrained(
         str(directory), dtype=torch.bfloat16, local_files_only=True,
     ).to("cuda").eval()
+    if quant_config is not None:
+        from torchao.quantization import quantize_
+
+        quantize_(model, quant_config)
     system_prompt = (Path(directory) / "system_prompt.txt").read_text().strip()
     state = (tokenizer, model, system_prompt)
     print(f"Prompt rewriter loaded in {time.perf_counter() - started:.1f}s", flush=True)
@@ -231,11 +248,13 @@ def rewrite(prompt, directory, token_budget=None):
             if not keep_loaded():
                 _unload()
     rewritten, ratio = parse_rewrite(answer)
+    quant = os.environ.get("REWRITER_QUANT", "").strip().lower()
     return {
         "rewritten_prompt": rewritten,
         "wh_ratio": ratio,
         "elapsed_seconds": round(time.perf_counter() - started, 2),
         "new_tokens": new_tokens,
+        "quant": quant if quant in ("int8", "int4") else "bf16",
     }
 
 
