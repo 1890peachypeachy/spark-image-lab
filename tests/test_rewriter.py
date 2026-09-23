@@ -4,7 +4,9 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
+import lab
 from rewriter import (MODEL_REVISION, RewriteError, install_error,
                       missing_model_files, parse_rewrite, size_for_ratio)
 
@@ -104,6 +106,79 @@ class InstallCheckTests(unittest.TestCase):
         error = install_error(self.dir)
         self.assertIsNotNone(error)
         self.assertIn("revision mismatch", error or "")
+
+
+class GenerateRewritePathTests(unittest.TestCase):
+    """lab.generate(rewrite_prompt=True) provenance + sizing, inference stubbed."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.out = Path(self.temp.name)
+
+    def fake_pipeline(self):
+        class FakePipe:
+            def __call__(self, **kwargs):
+                from PIL import Image
+
+                class R:
+                    images = [Image.new("RGBA", (kwargs["width"], kwargs["height"]), "red")]
+
+                return R()
+
+        return FakePipe()
+
+    def run_generate(self, info, apply_ratio=False):
+        import sys
+        import types
+
+        if "torch" not in sys.modules:
+            fake_torch = types.ModuleType("torch")
+            fake_torch.__version__ = "0.0"
+            fake_torch.inference_mode = lambda: __import__("contextlib").nullcontext()
+            fake_cuda = types.SimpleNamespace(max_memory_allocated=lambda: 0,
+                                              synchronize=lambda: None,
+                                              reset_peak_memory_stats=lambda: None,
+                                              empty_cache=lambda: None)
+            fake_torch.cuda = fake_cuda
+            fake_torch.Generator = lambda *a, **k: types.SimpleNamespace(manual_seed=lambda s: None)
+            sys.modules["torch"] = fake_torch
+            import importlib.metadata as _md
+
+            _orig_version = _md.version
+
+            def fake_version(name):
+                return {"torch": "0.0", "diffusers": "0.0", "transformers": "0.0"}.get(name) or _orig_version(name)
+
+            _md.version = fake_version
+        with patch.object(lab, "OUTPUTS", self.out), \
+                patch.object(lab.rewriter, "rewrite", return_value=info), \
+                patch.object(lab, "PIPE", self.fake_pipeline()), \
+                patch("rewriter._STATE", {"model": ("t", "m", "s")}):
+            image, files, metadata = lab.generate(
+                "a corgi", None, 1024, 1024, 40, 7,
+                rewrite_prompt=True, apply_ratio=apply_ratio)
+        return metadata
+
+    def test_rewritten_generation_records_provenance_and_ratio_size(self):
+        info = {"rewritten_prompt": "A rich rewritten prompt", "wh_ratio": "2:3",
+                "elapsed_seconds": 12.5, "new_tokens": 900}
+        metadata = self.run_generate(info, apply_ratio=True)
+        self.assertEqual(metadata["user_prompt"], "a corgi")
+        self.assertEqual(metadata["rewritten_prompt"], "A rich rewritten prompt")
+        self.assertEqual(metadata["rewriter"]["wh_ratio"], "2:3")
+        self.assertEqual(metadata["rewriter"]["model"], "Qwen/Qwen-Image-2.1-PE-T2I")
+        self.assertEqual(metadata["rewriter"]["revision"], MODEL_REVISION)
+        # 2:3 must map through WH_RATIO_TO_SIZE, overriding 1024x1024.
+        self.assertEqual((metadata["width"], metadata["height"]), (1696, 2528))
+        self.assertEqual(metadata["prompt"], "A rich rewritten prompt")
+
+    def test_rewrite_without_ratio_keeps_requested_size(self):
+        info = {"rewritten_prompt": "Rewritten", "wh_ratio": "",
+                "elapsed_seconds": 3.0, "new_tokens": 100}
+        metadata = self.run_generate(info)
+        self.assertEqual((metadata["width"], metadata["height"]), (1024, 1024))
+        self.assertEqual(metadata["rewriter"]["wh_ratio"], "")
 
 
 if __name__ == "__main__":
