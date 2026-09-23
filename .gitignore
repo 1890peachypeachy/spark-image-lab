@@ -1,5 +1,6 @@
 cache/
 model/
+model-rewriter/
 outputs/
 __pycache__/
 *.log

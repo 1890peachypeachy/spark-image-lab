@@ -8,6 +8,7 @@ APP_VERSION = (ROOT / "VERSION").read_text().strip()
 MODEL_ID = "Qwen/Qwen-Image-2.1"
 MODEL_REVISION = "b3179ad355be050328e483a9dfdd9e60cd62adfa"
 MODEL_DIR = Path(os.environ.get("SPARK_MODEL_DIR", ROOT / "model")).resolve()
+REWRITER_DIR = Path(os.environ.get("SPARK_REWRITER_DIR", ROOT / "model-rewriter")).resolve()
 DEFAULT_OUTPUTS = (ROOT / "outputs").resolve()
 OUTPUTS = Path(os.environ.get("SPARK_OUTPUT_DIR", DEFAULT_OUTPUTS)).resolve()
 

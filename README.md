@@ -13,6 +13,8 @@ inference, and multi-user hosting are not supported targets.
 ## What It Does
 
 - Generate images or edit up to ten reference images with Qwen-Image-2.1.
+- Rewrite a brief prompt into a detailed English prompt with the optional
+  Qwen-Image-2.1-PE-T2I prompt rewriter before generating.
 - Set prompt, width, height, steps, and seed in a simple two-column interface.
 - Download the PNG and its generation record, including runtime and memory.
 - Every successful generation appears in a persistent history table and image
@@ -45,9 +47,18 @@ use. This application's MIT license does not grant additional model rights.
 
 ```bash
 ./spark download --accept-model-license
+./spark download --rewriter --accept-model-license   # optional PE-T2I prompt rewriter
 ./spark start
 ./spark logs
 ```
+
+The optional prompt rewriter (`Qwen/Qwen-Image-2.1-PE-T2I`, ~17.5 GiB, same Qwen
+Research License) adds a **Rewrite prompt (PE-T2I)** button to the lab. It turns a
+brief prompt into a detailed English prompt plus a recommended size before you
+generate. To keep the image pipeline's memory footprint unchanged on co-tenanted
+GB10 systems, the rewriter loads on demand and unloads after each rewrite; set
+`SPARK_REWRITER_KEEP_LOADED=1` in the Compose environment to keep it resident,
+and `SPARK_REWRITER_MAX_TOKENS` (default 4096) to bound rewrite length.
 
 Initial model loading can take several minutes. Once the server is ready,
 open [Spark Image Lab](http://127.0.0.1:7862/) on the Spark. For access from

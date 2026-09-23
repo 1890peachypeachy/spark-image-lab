@@ -4,6 +4,13 @@
 
 - Add confirmed permanent deletion for saved generations and clean up reference
   copies only after their final use.
+- Add an optional Qwen-Image-2.1-PE-T2I prompt rewriter: revision-pinned
+  download (`./spark download --rewriter --accept-model-license`), a
+  **Rewrite prompt (PE-T2I)** button that fills the prompt with the rewritten
+  version plus its recommended size, and rewriter provenance (original prompt,
+  rewritten prompt, ratio, latency) in every rewritten generation's record.
+  The rewriter loads on demand and unloads after each rewrite so the
+  generation pipeline's memory footprint is unchanged.
 
 ## 0.1.0-alpha.2 - 2026-09-20
 

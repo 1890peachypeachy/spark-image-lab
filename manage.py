@@ -9,7 +9,7 @@ import re
 import shutil
 import sys
 
-from settings import MODEL_DIR, MODEL_ID, MODEL_REVISION, OUTPUTS, prepare_output_directory
+from settings import MODEL_DIR, MODEL_ID, MODEL_REVISION, OUTPUTS, REWRITER_DIR, prepare_output_directory
 
 REVISION_PATTERN = re.compile(r"[0-9a-f]{40}\Z")
 
@@ -101,6 +101,12 @@ def doctor(require_model=False):
     print("Model: " + (model_error or "required files and revision verified"))
     if require_model and model_error:
         failures.append(model_error + " Run ./spark download --accept-model-license.")
+    try:
+        import rewriter
+        rewriter_error = rewriter.install_error(REWRITER_DIR)
+        print("Prompt rewriter (optional): " + (rewriter_error or "ready"))
+    except ImportError:
+        print("Prompt rewriter (optional): unavailable in this build")
     for failure in failures:
         print(f"ERROR: {failure}", file=sys.stderr)
     return 1 if failures else 0
@@ -136,5 +142,12 @@ if __name__ == "__main__":
     check.add_argument("--require-model", action="store_true")
     fetch = sub.add_parser("download")
     fetch.add_argument("--accept-model-license", action="store_true")
+    fetch.add_argument("--rewriter", action="store_true",
+                       help="Download the optional PE-T2I prompt rewriter instead of the main model.")
     args = parser.parse_args()
-    sys.exit(doctor(args.require_model) if args.command == "doctor" else download(args.accept_model_license))
+    if args.command == "doctor":
+        sys.exit(doctor(args.require_model))
+    if getattr(args, "rewriter", False):
+        import rewriter
+        sys.exit(rewriter.download(REWRITER_DIR, args.accept_model_license))
+    sys.exit(download(args.accept_model_license))

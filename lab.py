@@ -17,8 +17,9 @@ except ImportError:
 from history import (delete_generation, load_history, restore_generation,
                      save_generation, validate_request)
 from manage import model_install_error
+import rewriter
 from settings import (APP_VERSION, MODEL_DIR, MODEL_ID, MODEL_REVISION, OUTPUTS,
-                      ROOT, prepare_output_directory)
+                      REWRITER_DIR, ROOT, prepare_output_directory)
 
 DEMOS = json.loads((ROOT / "demos.json").read_text())
 LOCK = threading.Lock()
@@ -47,11 +48,20 @@ def pipeline():
     return PIPE
 
 
-def generate(prompt, references=None, width=1024, height=1024, steps=40, seed=42):
+def generate(prompt, references=None, width=1024, height=1024, steps=40, seed=42,
+             rewrite_prompt=False, apply_ratio=False):
     import torch
 
     prepare_output_directory()
-    prompt, width, height, steps, seed = validate_request(prompt, width, height, steps, seed)
+    user_prompt = prompt
+    rewrite_info = None
+    with LOCK:
+        if rewrite_prompt:
+            rewrite_info = rewriter.rewrite(prompt, REWRITER_DIR)
+            prompt = rewrite_info["rewritten_prompt"]
+            if apply_ratio:
+                width, height = rewriter.size_for_ratio(rewrite_info.get("wh_ratio"), (width, height))
+        prompt, width, height, steps, seed = validate_request(prompt, width, height, steps, seed)
     references = references or []
     if len(references) > 10:
         raise ValueError("Use at most 10 reference images.")
@@ -88,6 +98,15 @@ def generate(prompt, references=None, width=1024, height=1024, steps=40, seed=42
         "mode": image.mode, "alpha_extrema": alpha_extrema,
         "versions": {p: importlib.metadata.version(p) for p in ("torch", "diffusers", "transformers")},
     }
+    if rewrite_info is not None:
+        metadata["user_prompt"] = user_prompt
+        metadata["rewritten_prompt"] = prompt
+        metadata["rewriter"] = {
+            "model": rewriter.MODEL_ID, "revision": rewriter.MODEL_REVISION,
+            "wh_ratio": rewrite_info.get("wh_ratio"),
+            "elapsed_seconds": rewrite_info.get("elapsed_seconds"),
+            "new_tokens": rewrite_info.get("new_tokens"),
+        }
     with HISTORY_LOCK:
         result = save_generation(OUTPUTS, image, metadata, references)
     print(f"Saved {result[2]['id']} in {elapsed:.1f}s", flush=True)
@@ -132,6 +151,25 @@ def build_app():
             logging.exception("Image input or output failed")
             raise gr.Error("Could not read an image or save the result. Check the image files, free disk space, and output permissions.") from error
         return image, [image, metadata], stats_text(stats), *refresh()
+
+    def rewrite_prompt_text(prompt):
+        if not prompt or not prompt.strip():
+            raise gr.Error("Enter a prompt to rewrite.")
+        try:
+            with LOCK:
+                info = rewriter.rewrite(prompt, REWRITER_DIR)
+        except rewriter.RewriteError as error:
+            raise gr.Error(str(error)) from error
+        except TorchOutOfMemoryError as error:
+            raise gr.Error("GPU memory exhausted during the rewrite. Retry after the current generation finishes.") from error
+        except RuntimeError as error:
+            logging.exception("Prompt rewrite failed")
+            raise gr.Error(f"Prompt rewrite failed: {error}") from error
+        width, height = rewriter.size_for_ratio(info.get("wh_ratio"), (None, None))
+        ratio = info.get("wh_ratio")
+        note = f"Recommended size: {width} x {height}" + (f" ({ratio})" if ratio else "")
+        note += f" | Rewritten in {info.get('elapsed_seconds', 0):.1f}s"
+        return info["rewritten_prompt"], note
 
     def restore(index, identifiers):
         if not isinstance(index, int) or not 0 <= index < len(identifiers):
@@ -180,6 +218,8 @@ def build_app():
         with gr.Row():
             with gr.Column(scale=1):
                 prompt = gr.Textbox(label="Prompt", lines=7)
+                rewrite_button = gr.Button("Rewrite prompt (PE-T2I)")
+                rewrite_note = gr.Textbox(label="Rewrite", interactive=False)
                 refs = gr.File(label="Reference images", file_count="multiple", file_types=["image"], type="filepath")
                 with gr.Row():
                     width = gr.Slider(512, 2752, value=1024, step=32, label="Width")
@@ -208,6 +248,9 @@ def build_app():
                                   outputs=[result, files, stats, *refresh_outputs],
                                   concurrency_limit=1, show_progress_on=[result],
                                   api_name="generate")
+        rewrite_button.click(rewrite_prompt_text, inputs=[prompt],
+                             outputs=[prompt, rewrite_note],
+                             concurrency_limit=1, api_name=False)
         generation.then(clear_delete_selection,
                         outputs=[selected_identifier, delete_confirm],
                         queue=False, api_name=False)
