@@ -200,28 +200,33 @@ def _unload():
         torch.cuda.empty_cache()
 
 
+def _run_generation(prompt, directory, budget):
+    """Run one rewrite in an inner frame so model/tokenizer locals are
+    destroyed before _unload() calls empty_cache()."""
+    tokenizer, model, system_prompt = _load(directory)
+    text = tokenizer.apply_chat_template(
+        [{"role": "system", "content": system_prompt},
+         {"role": "user", "content": prompt}],
+        tokenize=False, add_generation_prompt=True, enable_thinking=True,
+    )
+    inputs = tokenizer(text, return_tensors="pt").to(model.device)
+    import torch
+    with torch.inference_mode():
+        output = model.generate(
+            **inputs, max_new_tokens=budget,
+            do_sample=True, temperature=1.0, top_p=0.95, top_k=20,
+        )
+    generated = output[0, inputs["input_ids"].shape[1]:]
+    return tokenizer.decode(generated, skip_special_tokens=True), int(generated.shape[0])
+
+
 def rewrite(prompt, directory, token_budget=None):
     """Rewrite one prompt; returns {"rewritten_prompt", "wh_ratio", "elapsed_seconds", "new_tokens"}."""
-    import torch
-
     budget = token_budget or max_new_tokens()
     started = time.perf_counter()
     with REWRITE_LOCK:
         try:
-            tokenizer, model, system_prompt = _load(directory)
-            text = tokenizer.apply_chat_template(
-                [{"role": "system", "content": system_prompt},
-                 {"role": "user", "content": prompt}],
-                tokenize=False, add_generation_prompt=True, enable_thinking=True,
-            )
-            inputs = tokenizer(text, return_tensors="pt").to(model.device)
-            with torch.inference_mode():
-                output = model.generate(
-                    **inputs, max_new_tokens=budget,
-                    do_sample=True, temperature=1.0, top_p=0.95, top_k=20,
-                )
-            generated = output[0, inputs["input_ids"].shape[1]:]
-            answer = tokenizer.decode(generated, skip_special_tokens=True)
+            answer, new_tokens = _run_generation(prompt, directory, budget)
         finally:
             if not keep_loaded():
                 _unload()
@@ -230,7 +235,7 @@ def rewrite(prompt, directory, token_budget=None):
         "rewritten_prompt": rewritten,
         "wh_ratio": ratio,
         "elapsed_seconds": round(time.perf_counter() - started, 2),
-        "new_tokens": int(generated.shape[0]),
+        "new_tokens": new_tokens,
     }
 
 
