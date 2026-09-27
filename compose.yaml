@@ -18,6 +18,8 @@ services:
       GRADIO_ANALYTICS_ENABLED: "False"
       HF_HUB_DISABLE_TELEMETRY: "1"
     stop_grace_period: 90s
+    mem_limit: 32g
+    memswap_limit: 32g
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7860/', timeout=5)"]
       interval: 30s
